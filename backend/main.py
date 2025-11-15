@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -6,7 +7,7 @@ import google.generativeai as genai
 import os
 
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Literal
 
 # Configure Gemini API
 load_dotenv()
@@ -26,9 +27,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
 class CodeVerificationRequest(BaseModel):
     code: str
     conversation_history: List[Dict[str, str]] = []
+
 
 @app.post("/verify_code")
 async def verify_code(request: CodeVerificationRequest):
@@ -54,19 +57,19 @@ Consider the following conversation history for context (if any):
     feedback = response.text
     return {"feedback": feedback}
 
-import json
-
 
 class QuizRequest(BaseModel):
     topic: str
     grade: str
     conversation_history: List[Dict[str, str]] = []
 
+
 class QuizSubmissionRequest(BaseModel):
     topic: str
     questions: List[Dict[str, str]]
     answers: Dict[str, str]
     conversation_history: List[Dict[str, str]] = []
+
 
 @app.post("/generate_quiz")
 async def generate_quiz(request: QuizRequest):
@@ -77,13 +80,16 @@ Provide only the questions and no answers. Format each question as a JSON object
 
     response = model.generate_content(prompt)
     # Assuming the response text can be parsed as JSON directly or needs some cleaning
-    questions_text = response.text.replace("```json", "").replace("```", "").strip()
+    questions_text = response.text.replace(
+        "```json", "").replace("```", "").strip()
     try:
         questions = json.loads(questions_text)
     except json.JSONDecodeError:
         # Fallback for malformed JSON, try to extract questions heuristically or return an error
-        questions = [{"question": f"Could not parse quiz question: {questions_text}"}]
+        questions = [
+            {"question": f"Could not parse quiz question: {questions_text}"}]
     return {"questions": questions}
+
 
 @app.post("/submit_quiz")
 async def submit_quiz(request: QuizSubmissionRequest):
@@ -113,6 +119,7 @@ class ChatRequest(BaseModel):
     conversation_history: List[Dict[str, str]] = []
     end_conversation: bool = False
 
+
 @app.post("/generate_quiz")
 async def generate_quiz(request: QuizRequest):
     prompt = f"""You are a Socratic TA creating a quiz for a student.
@@ -122,13 +129,16 @@ Provide only the questions and no answers. Format each question as a JSON object
 
     response = model.generate_content(prompt)
     # Assuming the response text can be parsed as JSON directly or needs some cleaning
-    questions_text = response.text.replace("```json", "").replace("```", "").strip()
+    questions_text = response.text.replace(
+        "```json", "").replace("```", "").strip()
     try:
         questions = json.loads(questions_text)
     except json.JSONDecodeError:
         # Fallback for malformed JSON, try to extract questions heuristically or return an error
-        questions = [{"question": f"Could not parse quiz question: {questions_text}"}]
+        questions = [
+            {"question": f"Could not parse quiz question: {questions_text}"}]
     return {"questions": questions}
+
 
 @app.post("/submit_quiz")
 async def submit_quiz(request: QuizSubmissionRequest):
@@ -158,6 +168,7 @@ class ChatRequest(BaseModel):
     conversation_history: List[Dict[str, str]] = []
     end_conversation: bool = False
 
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
     if request.end_conversation:
@@ -186,12 +197,12 @@ Your goal is to guide them to the optimal solution by **asking a series of small
 
 You are currently in a conversation with the student. Here is the full chat history.
 Formulate your *next* guiding question based on this history."""
-        
+
         # Format conversation history for Gemini
         formatted_history = []
         for message in request.conversation_history:
             formatted_history.append(message)
-            
+
         # Add current user message
         if not request.conversation_history:
             user_message = f"Hello! I want to talk about {request.topic}."
@@ -201,3 +212,97 @@ Formulate your *next* guiding question based on this history."""
         response = model.generate_content(initial_prompt + user_message)
         answer = response.text
         return {"answer": answer}
+
+
+class ChatMessage(BaseModel):
+    """A single message in the conversation history."""
+    role: Literal["user", "agent"]
+    content: str
+
+
+class SummarizeRequest(BaseModel):
+    """The request body for the /summarize endpoint."""
+    conversation_history: List[ChatMessage]
+
+
+def get_summary_from_llm(history: ChatRequest) -> str:
+    """
+    Placeholder function for generating a summary.
+    Replace this with your actual summarization model call.
+    """
+    print("Received request to summarize conversation...")
+
+    if not history.conversation_history:
+        return "The conversation was empty. No summary could be generated."
+
+    # LLM interaction using Gemini
+    prompt = "You are a summarization assistant. Summarize the conversation history in the simplest manner possible with respect to the topic {history.topic}. Highlight important concepts and learning tips for the " \
+        "student"
+
+    for message in history.conversation_history:
+        prompt += f"{message["role"]}: {message["content"]}\n"
+
+    # Combine the conversation into a single string for the LLM
+
+    summary = model.generate_content(prompt)
+    print(summary)
+    print(summary.text)
+    results = summary.text
+
+    # --- START: Replace this mock logic ---
+    # This is where you would call your LLM.
+    # For example:
+    # client = OpenAI()
+    # response = client.chat.completions.create(
+    #   model="gpt-4o-mini",
+    #   messages=[
+    #     {"role": "system", "content": ""},
+    #     {"role": "user", "content": full_conversation}
+    #   ]
+    # )
+    # summary = response.choices[0].message.content
+
+    # Using placeholder logic for now:
+    # summary = f"This is a placeholder summary of the conversation.\n\n"
+    # summary += f"The conversation had {len(history)} messages.\n"
+    # summary += f"The topic was about: {history[0].content[:50]}...\n"
+    # summary += "Key points discussed include:\n"
+    # summary += "- Conceptual understanding of the problem.\n"
+    # summary += "- Code implementation and review.\n"
+    # summary += "- A quiz to test knowledge."
+    # # --- END: Replace this mock logic ---
+
+    print("Summary generated.")
+    return {"summary": results}
+
+
+@app.post("/summarize")
+async def summarize_conversation(request: ChatRequest):
+    """
+    Receives conversation history and returns a summary.
+    This endpoint is called from the "Summary" tab in the Streamlit app.
+    """
+    if not request.conversation_history:
+        return "The conversation was empty. No summary could be generated."
+    try:
+
+        # LLM interaction using Gemini
+        prompt = "You are a summarization assistant. Summarize the conversation history in the simplest manner possible with respect to the topic {request.topic}. Highlight important concepts and learning tips for the " \
+            "student"
+
+        for message in request.conversation_history:
+            prompt += f"{message["role"]}: {message["content"]}\n"
+
+    # Combine the conversation into a single string for the LLM
+
+        summary = model.generate_content(prompt)
+        print(summary)
+        print(summary.text)
+        results = summary.text
+
+        return {"summary": results}
+
+    except Exception as e:
+        # Log the error and return a 500 status
+        print(f"Error during summarization: {e}")
+        return {"summary": "An error occurred while generating the summary."}, 500

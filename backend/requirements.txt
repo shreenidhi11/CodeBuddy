@@ -4,8 +4,8 @@ annotated-types==0.7.0
 anyio==4.11.0
 attrs==25.4.0
 blinker==1.9.0
-boto3==1.40.57
-botocore==1.40.57
+boto3
+botocore
 cachetools==5.3.3
 certifi==2025.11.12
 charset-normalizer==3.4.4
@@ -80,7 +80,7 @@ typing_extensions==4.15.0
 tzdata==2024.1
 tzlocal==5.3.1
 uritemplate==4.2.0
-urllib3==2.2.0
+urllib3
 uvicorn==0.27.0
 validators==0.35.0
 zipp==3.23.0
