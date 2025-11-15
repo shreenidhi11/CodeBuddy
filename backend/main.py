@@ -54,6 +54,105 @@ Consider the following conversation history for context (if any):
     feedback = response.text
     return {"feedback": feedback}
 
+import json
+
+
+class QuizRequest(BaseModel):
+    topic: str
+    grade: str
+    conversation_history: List[Dict[str, str]] = []
+
+class QuizSubmissionRequest(BaseModel):
+    topic: str
+    questions: List[Dict[str, str]]
+    answers: Dict[str, str]
+    conversation_history: List[Dict[str, str]] = []
+
+@app.post("/generate_quiz")
+async def generate_quiz(request: QuizRequest):
+    prompt = f"""You are a Socratic TA creating a quiz for a student.
+Based on the topic: {request.topic} and grade level: {request.grade}, generate 3-5 short answer quiz questions.
+Provide only the questions and no answers. Format each question as a JSON object with a 'question' key.
+"""
+
+    response = model.generate_content(prompt)
+    # Assuming the response text can be parsed as JSON directly or needs some cleaning
+    questions_text = response.text.replace("```json", "").replace("```", "").strip()
+    try:
+        questions = json.loads(questions_text)
+    except json.JSONDecodeError:
+        # Fallback for malformed JSON, try to extract questions heuristically or return an error
+        questions = [{"question": f"Could not parse quiz question: {questions_text}"}]
+    return {"questions": questions}
+
+@app.post("/submit_quiz")
+async def submit_quiz(request: QuizSubmissionRequest):
+    prompt = f"""You are a Socratic TA evaluating a student's quiz answers.
+Topic: {request.topic}
+Questions and provided answers:
+"""
+    for q_data in request.questions:
+        question = q_data["question"]
+        answer = request.answers.get(question, "No answer provided")
+        prompt += f"\nQuestion: {question}\nStudent Answer: {answer}\n"
+
+    prompt += f"""\nBased on these answers and the conversation history, provide constructive feedback.\n
+Identify areas where the student is lacking and suggest 2-3 specific topics or concepts they should review.\n
+Do not give direct answers but guide them with leading questions."""
+
+    for message in request.conversation_history:
+        prompt += f"{message["role"]}: {message["content"]}\n"
+
+    response = model.generate_content(prompt)
+    results = response.text
+    return {"results": results}
+
+
+class ChatRequest(BaseModel):
+    topic: str
+    conversation_history: List[Dict[str, str]] = []
+    end_conversation: bool = False
+
+@app.post("/generate_quiz")
+async def generate_quiz(request: QuizRequest):
+    prompt = f"""You are a Socratic TA creating a quiz for a student.
+Based on the topic: {request.topic} and grade level: {request.grade}, generate 3-5 short answer quiz questions.
+Provide only the questions and no answers. Format each question as a JSON object with a 'question' key.
+"""
+
+    response = model.generate_content(prompt)
+    # Assuming the response text can be parsed as JSON directly or needs some cleaning
+    questions_text = response.text.replace("```json", "").replace("```", "").strip()
+    try:
+        questions = json.loads(questions_text)
+    except json.JSONDecodeError:
+        # Fallback for malformed JSON, try to extract questions heuristically or return an error
+        questions = [{"question": f"Could not parse quiz question: {questions_text}"}]
+    return {"questions": questions}
+
+@app.post("/submit_quiz")
+async def submit_quiz(request: QuizSubmissionRequest):
+    prompt = f"""You are a Socratic TA evaluating a student's quiz answers.
+Topic: {request.topic}
+Questions and provided answers:
+"""
+    for q_data in request.questions:
+        question = q_data["question"]
+        answer = request.answers.get(question, "No answer provided")
+        prompt += f"\nQuestion: {question}\nStudent Answer: {answer}\n"
+
+    prompt += f"""\nBased on these answers and the conversation history, provide constructive feedback.
+Identify areas where the student is lacking and suggest 2-3 specific topics or concepts they should review.
+Do not give direct answers but guide them with leading questions."""
+
+    for message in request.conversation_history:
+        prompt += f"{message["role"]}: {message["content"]}\n"
+
+    response = model.generate_content(prompt)
+    results = response.text
+    return {"results": results}
+
+
 class ChatRequest(BaseModel):
     topic: str
     conversation_history: List[Dict[str, str]] = []
