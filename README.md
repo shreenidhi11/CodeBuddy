@@ -56,3 +56,7 @@ CodeBuddy is a personal coding tutor designed to help users build intuition for 
 
 ## License
 (License information can be added here.)
+
+## Resources used
+https://docs.streamlit.io/develop/tutorials/chat-and-llm-apps/build-conversational-apps -- to build the chat application
+https://github.com/marcusschiesser/streamlit-monaco -- online code editor

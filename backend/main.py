@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 import os
 
@@ -15,6 +16,43 @@ genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = FastAPI()
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8501"],  # Allow Streamlit's default port
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+class CodeVerificationRequest(BaseModel):
+    code: str
+    conversation_history: List[Dict[str, str]] = []
+
+@app.post("/verify_code")
+async def verify_code(request: CodeVerificationRequest):
+    prompt = f"""You are a \"Socratic TA\" helping a student with a coding problem.
+The student has submitted the following Python code:
+
+```python
+{request.code}
+```
+
+Your task is to review the code and provide constructive feedback without directly giving the solution.
+Focus on logical errors, inefficiencies, or areas where the code doesn't align with the problem's requirements.
+Ask leading questions to guide the student to discover and correct their own mistakes.
+Consider the following conversation history for context (if any):
+
+"""
+
+    for message in request.conversation_history:
+        prompt += f"{message["role"]}: {message["content"]}\n"
+    prompt += f"\nBased on the above, please provide feedback on the student's submitted code using leading questions."
+
+    response = model.generate_content(prompt)
+    feedback = response.text
+    return {"feedback": feedback}
 
 class ChatRequest(BaseModel):
     topic: str
@@ -45,6 +83,7 @@ Your goal is to guide them to the optimal solution by **asking a series of small
 5.  Use their answers to guide them, step-by-step, toward the more optimal solution.
 6.  Be encouraging! Use phrases like "Exactly!", "That's a great observation.", "You're on the right track."
 7.  If the student says that "they are not sure" or "they do not know the answer" to your given hints and help **DO not** start explaining the problem from the start
+8.  If the student says that "i have understood the concept" you can stop explaining
 
 You are currently in a conversation with the student. Here is the full chat history.
 Formulate your *next* guiding question based on this history."""
