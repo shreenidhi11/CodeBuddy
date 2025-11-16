@@ -1,7 +1,7 @@
 # CodeBuddy - Personal Coding Tutor
 
 ## Project Description
-CodeBuddy is a web-based personal coding tutor designed to assist students in understanding and solving coding problems. It provides an engaging environment where users can paste a coding problem, discuss concepts with AI, and then proceed to code their solution in an integrated editor.
+CodeBuddy is a web-based personal coding tutor designed to assist students in building intuition and solving coding problems. It provides an engaging environment where users can paste a coding problem, discuss concepts with AI, and then proceed to code their solution in an integrated editor.
 
 ## 📸 Demo
 
@@ -92,21 +92,24 @@ Once both the backend and frontend are running, you can interact with the applic
 ## 🧰 Tech Stack
 **Backend:**
 *   Python 3.12
-*   FastAPI (as indicated by uvicorn dependency)
+*   FastAPI
 *   Gemini LLM
+*   Cline CLI
 
 **Frontend:**
-*   Streamlit (for interactive applications, as indicated by streamlit dependency)
+*   Streamlit
 
 **Prerequisites:**
 *   Python 3.8+
 *   pip
 *   Gemini Account and API key
+*   Vscode
+*   Cline credits
 
 ## 🤝 Contributing
 Pull requests are welcome! For major changes, please open an issue first to discuss what you’d like to change.
 
-## Credits used
+## Credits/Resources used
 * **Build a basic LLM chat app** - https://docs.streamlit.io/develop/tutorials/chat-and-llm-apps/build-conversational-apps 
   * To build the chat application using streamlit
 * **Code editor** -https://github.com/marcusschiesser/streamlit-monaco
