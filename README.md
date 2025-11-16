@@ -42,12 +42,13 @@ The frontend is a Streamlit application.
 `cd .. && cd frontend`
 
 2. Create and activate a Python virtual environment:
-`python -m venv venv && source venv/bin/activate`  # On Windows, use `venv\Scripts\activate`
+`python -m venv venv && source venv/bin/activate`
+ On Windows, use `venv\Scripts\activate`
 
-3. Install the required Python packages:
+4. Install the required Python packages:
 `pip install -r requirements.txt`
 
-4. Start the Streamlit frontend application:
+5. Start the Streamlit frontend application:
 `streamlit run app.py`
 (The frontend application will typically open in your web browser at  http://localhost:8501  or a similar port.)
 
@@ -111,5 +112,5 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 * **Code editor** -https://github.com/marcusschiesser/streamlit-monaco
   * To integrate a code editor directly in the conversation with AI and user
 * **Cline (Vibe Coding)** -  https://app.cline.bot/dashboard
-  * To build, help debug the issues and test the application
+  * End-to-end building, troubleshooting, debugging and testing of the web application
 * **Github ReadMe** - https://medium.com/@fulton_shaun/readme-rules-structure-style-and-pro-tips-faea5eb5d252
