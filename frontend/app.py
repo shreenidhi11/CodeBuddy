@@ -58,7 +58,7 @@ def get_pdf_download_html(text, filename="summary.pdf"):
 
 
 def main():
-    st.title("Interactive Problem Solving Session")
+    st.title("CodeBuddy")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
