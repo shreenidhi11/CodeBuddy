@@ -5,7 +5,7 @@ CodeBuddy is a web-based personal coding tutor designed to assist students in un
 
 ## 📸 Demo
 
-![Demo GIF](https://your-demo-link.com/demo.gif)
+https://youtu.be/FJsvtWNOTXA
 
 ## 📦 Installation steps
 Follow these steps to get CodeBuddy up and running:
