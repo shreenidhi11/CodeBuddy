@@ -288,7 +288,8 @@ async def summarize_conversation(request: ChatRequest):
 
         # LLM interaction using Gemini
         prompt = "You are a summarization assistant. Summarize the conversation history in the simplest manner possible with respect to the topic {request.topic}. Highlight important concepts and learning tips for the " \
-            "student"
+            "student." \
+            "Restrict yourself from using any bold words."
 
         for message in request.conversation_history:
             prompt += f"{message["role"]}: {message["content"]}\n"

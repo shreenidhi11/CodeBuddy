@@ -56,6 +56,7 @@ def get_pdf_download_html(text, filename="summary.pdf"):
         return ""
 
 
+
 def main():
     st.title("Interactive Problem Solving Session")
 
@@ -98,99 +99,114 @@ def main():
                         {"role": "user", "content": f"Problem: {problem_text}"})
 
                     # Send initial problem to backend
-                    response = requests.post(
-                        f"{BACKEND_URL}/chat",
-                        json={
-                            "topic": st.session_state.topic,
-                            "conversation_history": [],
-                            "end_conversation": False
-                        }
-                    )
-                    if response.status_code == 200:
-                        agent_response = response.json().get("answer")
-                        st.session_state.messages.append(
-                            {"role": "agent", "content": agent_response})
-                    else:
-                        st.error(
-                            f"Error communicating with backend: {response.text}")
-                    # st.experimental_rerun()
+                    try:
+                        response = requests.post(
+                            f"{BACKEND_URL}/chat",
+                            json={
+                                "topic": st.session_state.topic,
+                                "conversation_history": [],
+                                "end_conversation": False
+                            }
+                        )
+                        if response.status_code == 200:
+                            agent_response = response.json().get("answer")
+                            st.session_state.messages.append(
+                                {"role": "agent", "content": agent_response})
+                        else:
+                            st.error(
+                                f"Error communicating with backend: {response.text}")
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Connection error: {e}")
+                    
+                    st.rerun() # Rerun after submitting problem
                 else:
                     st.warning("Please paste a problem to submit.")
-
-        # Chat input for ongoing conversation
-        if prompt := st.chat_input("Your message:"):
-            # Clear any existing code review feedback when a new message is entered
-            st.session_state.code_review_feedback = None
-
-            print("I am here")
-            user_message = {"role": "user", "content": prompt}
-            st.session_state.messages.append(user_message)
-            with st.chat_message("user"):
-                st.markdown(prompt)
-            if "i have understood the concept" in prompt.lower():
-                st.session_state.concept_understood = True
-                st.session_state.messages.append(
-                    {"role": "agent", "content": "Great! Now you can try coding your solution below. If you want to go back to discussing the concept, just say so."})
-                # st.experimental_rerun()
-
-            elif "go back to concept" in prompt.lower() and st.session_state.concept_understood:
-                st.session_state.concept_understood = False
-                st.session_state.messages.append(
-                    {"role": "agent", "content": "Okay, let's go back to discussing the concept. What's your next question?"})
-                # st.experimental_rerun()
-
-            else:
-
-                # Prepare conversation history for backend
-                conversation_history_for_backend = [
-                    {"role": msg["role"], "content": msg["content"]}
-                    for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
-                ]
-
-                # Send ongoing conversation to backend
-                response = requests.post(
-                    f"{BACKEND_URL}/chat",
-                    json={
-                        "topic": st.session_state.topic,
-                        "conversation_history": conversation_history_for_backend,
-                        "end_conversation": False
-                    }
-                )
-                if response.status_code == 200:
-                    agent_response = response.json().get("answer")
+                    
+        # --- START OF MODIFICATION ---
+        
+        # Only show chat input if the problem is submitted AND the concept is NOT understood
+        if not st.session_state.concept_understood and st.session_state.topic is not None:
+            if prompt := st.chat_input("Your message:"):
+                # Clear any existing code review feedback when a new message is entered
+                st.session_state.code_review_feedback = None
+                
+                user_message = {"role": "user", "content": prompt}
+                st.session_state.messages.append(user_message)
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                
+                if "i have understood the concept" in prompt.lower():
+                    st.session_state.concept_understood = True
+                    # Add agent's response
                     st.session_state.messages.append(
-                        {"role": "agent", "content": agent_response})
-                else:
-                    st.error(
-                        f"Error communicating with backend: {response.text}")
+                        {"role": "agent", "content": "Great! Now you can try coding your solution below. If you want to go back to discussing the concept, just click the 'Back to Discussion' button."}
+                    )
+                    st.rerun()
 
-            st.rerun()
+                # REMOVED "go back to concept" from here. It's now a button.
+
+                else:
+                    # Prepare conversation history for backend
+                    conversation_history_for_backend = [
+                        {"role": msg["role"], "content": msg["content"]}
+                        for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
+                    ]
+                    
+                    try:
+                        # Send ongoing conversation to backend
+                        response = requests.post(
+                            f"{BACKEND_URL}/chat",
+                            json={
+                                "topic": st.session_state.topic,
+                                "conversation_history": conversation_history_for_backend,
+                                "end_conversation": False
+                            }
+                        )
+                        if response.status_code == 200:
+                            agent_response = response.json().get("answer")
+                            st.session_state.messages.append(
+                                {"role": "agent", "content": agent_response})
+                        else:
+                            st.error(
+                                f"Error communicating with backend: {response.text}")
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Connection error: {e}")
+
+                st.rerun()
 
         # Code editor appears only if concept is understood
         if st.session_state.concept_understood:
             st.subheader("Code your solution")
-            # content = st_ace(language="python", theme="dracula", keybind="vscode",
-            #                  font_size=14, tab_size=4, show_gutter=True, show_print_margin=True,
-            #                  wrap=False, auto_update=True, readonly=False,
-            #                  min_lines=20, value="# Write your Python code here")
+            
+            # ADDED a button to go back to the discussion
+            if st.button("Back to Discussion", key='back_to_discussion_code'):
+                st.session_state.concept_understood = False
+                st.session_state.messages.append(
+                    {"role": "agent", "content": "Okay, let's go back to discussing the concept. What's your next question?"}
+                )
+                st.rerun()
+
             content = st_ace(language="python", theme="dracula",
                              value="# Write your Python code here")
             if st.button("Submit Code for Review"):
-                response = requests.post(
-                    f"{BACKEND_URL}/verify_code",
-                    json={
-                        "code": content,
-                        "conversation_history": [
-                            {"role": msg["role"], "content": msg["content"]}
-                            for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
-                        ]
-                    }
-                )
-                if response.status_code == 200:
-                    st.session_state.code_review_feedback = response.json().get("feedback")
-                else:
-                    st.error(
-                        f"Error communicating with backend for code review: {response.text}")
+                try:
+                    response = requests.post(
+                        f"{BACKEND_URL}/verify_code",
+                        json={
+                            "code": content,
+                            "conversation_history": [
+                                {"role": msg["role"], "content": msg["content"]}
+                                for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
+                            ]
+                        }
+                    )
+                    if response.status_code == 200:
+                        st.session_state.code_review_feedback = response.json().get("feedback")
+                    else:
+                        st.error(f"Error communicating with backend for code review: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Connection error: {e}")
+                
                 st.rerun()
 
             if st.session_state.code_review_feedback:
@@ -200,37 +216,43 @@ def main():
 
                 # Clear feedback after displaying
                 st.session_state.code_review_feedback = None
+        
+        # --- END OF MODIFICATION ---
 
     with quiz_tab:
         # Quiz functionality
         if st.session_state.topic and not st.session_state.quiz_active:
             if st.button("Take a Quiz!"):
                 st.session_state.quiz_active = True
-                st.experimental_rerun()
+                st.rerun() # Use st.rerun
 
         if st.session_state.quiz_active and not st.session_state.quiz_questions:
             st.subheader("Quiz Time!")
             grade = st.selectbox("Select your grade level:", [
                                  "High School", "Undergraduate", "Graduate"])
             if st.button("Generate Quiz"):
-                response = requests.post(
-                    f"{BACKEND_URL}/generate_quiz",
-                    json={
-                        "topic": st.session_state.topic,
-                        "grade": grade,
-                        "conversation_history": [
-                            {"role": msg["role"], "content": msg["content"]}
-                            for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
-                        ]
-                    }
-                )
-                if response.status_code == 200:
-                    st.session_state.quiz_questions = response.json().get("questions")
-                    st.session_state.messages.append(
-                        {"role": "agent", "content": "Here's your quiz!"})
-                else:
-                    st.error(f"Error generating quiz: {response.text}")
-                st.experimental_rerun()
+                try:
+                    response = requests.post(
+                        f"{BACKEND_URL}/generate_quiz",
+                        json={
+                            "topic": st.session_state.topic,
+                            "grade": grade,
+                            "conversation_history": [
+                                {"role": msg["role"], "content": msg["content"]}
+                                for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
+                            ]
+                        }
+                    )
+                    if response.status_code == 200:
+                        st.session_state.quiz_questions = response.json().get("questions")
+                        st.session_state.messages.append(
+                            {"role": "agent", "content": "Here's your quiz!"})
+                    else:
+                        st.error(f"Error generating quiz: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Connection error: {e}")
+                
+                st.rerun() # Use st.rerun
 
         if st.session_state.quiz_active and st.session_state.quiz_questions:
             st.subheader("Answer the Quiz Questions")
@@ -244,50 +266,42 @@ def main():
                 submit_quiz = st.form_submit_button("Submit Quiz")
                 if submit_quiz:
                     st.session_state.quiz_answers = user_answers
-                    response = requests.post(
-                        f"{BACKEND_URL}/submit_quiz",
-                        json={
-                            "topic": st.session_state.topic,
-                            "questions": st.session_state.quiz_questions,
-                            "answers": st.session_state.quiz_answers,
-                            "conversation_history": [
-                                {"role": msg["role"],
-                                    "content": msg["content"]}
-                                for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
-                            ]
-                        }
-                    )
-                    if response.status_code == 200:
-                        st.session_state.quiz_results = response.json().get("results")
-                        st.session_state.messages.append(
-                            {"role": "agent", "content": "Quiz submitted! Here are your results."})
-                    else:
-                        st.error(f"Error submitting quiz: {response.text}")
-                    st.experimental_rerun()
+                    try:
+                        response = requests.post(
+                            f"{BACKEND_URL}/submit_quiz",
+                            json={
+                                "topic": st.session_state.topic,
+                                "questions": st.session_state.quiz_questions,
+                                "answers": st.session_state.quiz_answers,
+                                "conversation_history": [
+                                    {"role": msg["role"],
+                                        "content": msg["content"]}
+                                    for msg in st.session_state.messages if msg["role"] in ["user", "agent"]
+                                ]
+                            }
+                        )
+                        if response.status_code == 200:
+                            st.session_state.quiz_results = response.json().get("results")
+                            st.session_state.messages.append(
+                                {"role": "agent", "content": "Quiz submitted! Here are your results."})
+                        else:
+                            st.error(f"Error submitting quiz: {response.text}")
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Connection error: {e}")
+                    
+                    st.rerun() # Use st.rerun
 
         if st.session_state.quiz_results:
             st.subheader("Quiz Results")
             st.markdown(st.session_state.quiz_results)
-            if st.button("Back to Discussion"):
+            if st.button("Back to next set of quiz", key='back_to_discussion_quiz'):
                 st.session_state.quiz_active = False
                 st.session_state.quiz_questions = []
                 st.session_state.quiz_answers = {}
                 st.session_state.quiz_results = None
-                st.experimental_rerun()
+                st.rerun() # Use st.rerun
 
-    # with summary_tab:
-    #     if st.session_state.conversation_summary:
-    #         st.subheader("Conversation Summary")
-    #         st.markdown(st.session_state.conversation_summary)
-    #         st.download_button(
-    #             label="Download Summary",
-    #             data=st.session_state.conversation_summary,
-    #             file_name="conversation_summary.txt",
-    #             mime="text/plain"
-    #         )
-    #     else:
-    #         st.info("Generate a summary from the \"Conversation / Code Editor\" tab.")
-
+    # ... (summary_tab code remains the same) ...
     with summary_tab:
         st.subheader("Conversation Summary")
 
@@ -341,7 +355,7 @@ def main():
                                     summary_data)
                             # --- End of added block ---
 
-                            st.success("Summary generated!")
+                            # st.success("Summary generated!")
                         else:
                             st.error(
                                 f"Error generating summary: {response.text}")
@@ -368,7 +382,8 @@ def main():
                     # PDF Download
                     pdf_html = get_pdf_download_html(
                         st.session_state.conversation_summary)
-                    st.markdown(pdf_html, unsafe_allow_html=True)
+                    if pdf_html: # Only show if PDF generation was successful
+                        st.markdown(pdf_html, unsafe_allow_html=True)
 
                 with col2:
                     # TXT Download (as a fallback)
@@ -378,7 +393,7 @@ def main():
                         file_name="conversation_summary.txt",
                         mime="text/plain"
                     )
-            elif not st.session_state.topic:
+            elif st.session_state.topic: # Show only if topic exists but summary doesn't
                 st.info(
                     "Click the button above to generate a summary of your conversation.")
 
