@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 import requests
 from streamlit_ace import st_ace
@@ -5,7 +7,7 @@ from fpdf import FPDF
 import warnings  # Import the warnings module
 import base64  # Import base64 module
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 def get_pdf_download_html(text, filename="summary.pdf"):

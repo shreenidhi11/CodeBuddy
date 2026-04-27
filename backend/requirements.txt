@@ -84,3 +84,4 @@ urllib3
 uvicorn==0.27.0
 validators==0.35.0
 zipp==3.23.0
+fpdf==1.7.2
