@@ -41,8 +41,11 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          debug: true        
+          script_stop: true  
           script: |
             cd ~/CodeBuddy
             git pull origin main
             docker-compose pull
             docker-compose up -d
+            docker images
