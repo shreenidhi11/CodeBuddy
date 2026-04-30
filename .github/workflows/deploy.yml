@@ -30,7 +30,7 @@ jobs:
           context: ./frontend
           push: true
           tags: zachshr/codebuddy-frontend:latest
-
+          
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
